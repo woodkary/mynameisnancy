@@ -11,7 +11,11 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -51,28 +55,42 @@ public class ChatMemoryService {
     // 存储ChatMessage到Redis
     @Async
     public void saveChatMessage(String key, String userMessage, String assistantMessage) {
-        lock.lock();
         try {
             // 序列化用户消息和助手消息
             String userMessageJson = objectMapper.writeValueAsString(new ChatMessage("user", userMessage));
             String assistantMessageJson = objectMapper.writeValueAsString(new ChatMessage("assistant", assistantMessage));
 
-            // 存储到 Redis
-            redisTemplate.opsForList().rightPush(key, userMessageJson);
-            redisTemplate.opsForList().rightPush(key, assistantMessageJson);
+            // 使用管道来批量存储
+            redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+                connection.lPush(key.getBytes(), userMessageJson.getBytes());
+                connection.lPush(key.getBytes(), assistantMessageJson.getBytes());
+                return null;
+            });
 
         } catch (JsonProcessingException e) {
             e.printStackTrace();
-        } finally {
-            lock.unlock();
         }
     }
 
+
+
     public List<String> getConversationIds(Integer userId) {
-        List<String> conversationIds = redisTemplate.opsForList().range("chatList:" + userId, 0, -1);
-        if (conversationIds == null) {
-            conversationIds = new ArrayList<>();
-        }
-        return conversationIds;
+        String pattern = "chatMemories2:" + userId + ":*";
+
+        // 使用 Redis SCAN 而非 KEYS 来提高性能
+        Set<String> keys = redisTemplate.execute((RedisConnection connection) -> {
+            Set<String> result = new HashSet<>();
+            Cursor<byte[]> cursor = connection.scan(ScanOptions.scanOptions().match(pattern).build());
+            cursor.forEachRemaining(key -> result.add(new String(key)));
+            return result;
+        });
+
+        // 如果 keys 为空，返回空列表而不是 null
+        return Optional.ofNullable(keys)
+                .map(k -> k.stream()
+                        .map(key -> key.split(":")[2]) // 获取聊天标题部分
+                        .collect(Collectors.toList()))
+                .orElseGet(Collections::emptyList);
     }
+
 }

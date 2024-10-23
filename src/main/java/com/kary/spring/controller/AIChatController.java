@@ -3,7 +3,6 @@ package com.kary.spring.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.kary.spring.entity.ChatMessage;
 import com.kary.spring.service.ChatMemoryService;
-import com.kary.spring.util.ConversationHistoryUtil;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,23 +13,17 @@ import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.locks.Lock;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY;
 import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_RETRIEVE_SIZE_KEY;
@@ -90,7 +83,7 @@ public class AIChatController {
      * @param conversationId 会话id
      * @return 聊天历史
      */
-    @GetMapping("/ChatHistory")
+    @GetMapping("/chat")
     public Map<String, Object> getChatHistory(@RequestParam(value = "userId") Integer userId,
                                               @RequestParam(value = "conversationId") String conversationId) throws JsonProcessingException {
         // 从redis中获取userId和conversationId对应的历史消息 todo:先从客户端内存中获取
@@ -107,20 +100,31 @@ public class AIChatController {
     }
     @PostMapping("/chat")
     public Map<String, Object> chat(@RequestBody ChatRequest chatRequest) throws JsonProcessingException {
+        //首先检查 chatRequest.getContent() 是否为空。如果为空，则返回错误响应：
         if (chatRequest.getContent() == null || chatRequest.getContent().isEmpty()) {
             return Map.of(
                     "code", 400,
                     "message", "内容不能为空"
             );
         }
+        //聊天记录是否存在
+        AtomicReference<Boolean> isNew = new AtomicReference<>(false);
 
         String clientKey = chatRequest.getUserId() + "_" + chatRequest.getConversationId();
-        ChatClient chatClient = activeChatClients.get(clientKey);
+        ChatClient chatClient = activeChatClients.computeIfAbsent(clientKey, key -> {
+            // 从 Redis 或其他存储中获取聊天记录
+            String memoryKey = "chatMemories2:" + chatRequest.getUserId() + ":" + chatRequest.getConversationId();
+            List<ChatMessage> previousMessages = null;
+            try {
+                previousMessages = chatMemoryService.getChatMessages(memoryKey);
+                if(!previousMessages.isEmpty()){
+                    isNew.set(true);
+                }
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
 
-        if (chatClient == null) {
-            String key = "chatMemories2:" + chatRequest.getUserId() + ":" + chatRequest.getConversationId();
-            List<ChatMessage> previousMessages = chatMemoryService.getChatMessages(key);
-
+            // 创建新的 ChatMemory 实例，并填充之前的消息
             ChatMemory chatMemory = new InMemoryChatMemory();
             for (ChatMessage message : previousMessages) {
                 if (Objects.equals(message.getMessageType(), "user")) {
@@ -130,15 +134,15 @@ public class AIChatController {
                 }
             }
 
-            chatClient = ChatClient.builder(chatModel)
+            // 创建新的 ChatClient 实例并返回
+            return ChatClient.builder(chatModel)
                     .defaultAdvisors(
                             new MessageChatMemoryAdvisor(chatMemory),
                             new SimpleLoggerAdvisor()
                     ).build();
+        });
 
-            activeChatClients.put(clientKey, chatClient);
-        }
-
+        // 调用AI
         String assistedContent = chatClient.prompt()
                 .user(chatRequest.getContent())
                 .advisors(a -> a
@@ -148,12 +152,14 @@ public class AIChatController {
                 .call()
                 .content();
 
+        // 异步保存聊天记录
         String key = "chatMemories2:" + chatRequest.getUserId() + ":" + chatRequest.getConversationId();
         taskScheduler.submit(() -> chatMemoryService.saveChatMessage(key, chatRequest.getContent(), assistedContent));
 
         return Map.of(
                 "code", 200,
-                "message", assistedContent
+                "message", assistedContent,
+                "isNew", isNew.get()//是否是新的聊天记录
         );
     }
 
