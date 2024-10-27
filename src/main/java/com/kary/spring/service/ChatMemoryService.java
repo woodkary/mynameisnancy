@@ -74,7 +74,7 @@ public class ChatMemoryService {
 
 
 
-    public List<String> getConversationIds(Integer userId) {
+    public List<String> getConversationIds(Long userId) {
         String pattern = "chatMemories2:" + userId + ":*";
 
         // 使用 Redis SCAN 而非 KEYS 来提高性能

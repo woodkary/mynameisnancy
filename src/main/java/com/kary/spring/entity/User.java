@@ -15,7 +15,7 @@ import lombok.experimental.Accessors;
 public class User extends BaseEntity{
 
   @TableId
-  private Long Id;
+  private Long id;
   private String account;
   private String password;
   private String name;

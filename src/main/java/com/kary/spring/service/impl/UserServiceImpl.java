@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kary.spring.constant.UserConstant;
 import com.kary.spring.dto.RegisterDTO;
+import com.kary.spring.entity.TokenUserClaim;
 import com.kary.spring.exception.BaseException;
 import com.kary.spring.exception.LoginException;
 import com.kary.spring.mapper.UserMapper;
@@ -31,13 +32,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     QueryWrapper<User> queryWrapper = new QueryWrapper<>();
     queryWrapper.eq(UserConstant.ACCOUNT, loginDTO.getAccount());
     User user = userMapper.selectOne(queryWrapper);
+    System.out.println("userId======"+user.getId());
     if (Objects.isNull(user)) {
       throw new LoginException("用户不存在", 401);
     }
     if (!loginDTO.getPassword().equals(user.getPassword())) {
       throw new LoginException("密码错误", 401);
     }
-    return jwtUtil.getToken(loginDTO);
+    return jwtUtil.getToken(new TokenUserClaim(user.getId(), user.getAccount()));
   }
 
   @Override
@@ -58,11 +60,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     QueryWrapper<User> queryWrapper = new QueryWrapper<>();
     queryWrapper.eq("uuid", uuid);
     User user = userMapper.selectOne(queryWrapper);
+    System.out.println("userId======"+user.getId());
     if (Objects.isNull(user)) {
       // 用户不存在，抛出异常或进行其他处理
       throw new LoginException("请进行注册", 401);
     }
     // 用户存在，生成JWT token
-    return jwtUtil.getToken(new LoginDTO().setAccount(user.getAccount()).setPassword(user.getPassword()));
+    return jwtUtil.getToken(new TokenUserClaim(user.getId(), user.getAccount()));
   }
 }

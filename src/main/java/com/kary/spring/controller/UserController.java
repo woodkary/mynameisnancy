@@ -8,9 +8,12 @@ import com.kary.spring.service.UserService;
 import com.kary.spring.util.JwtUtil;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/users")
@@ -40,10 +43,12 @@ public class UserController {
 
       try {
         // 解析token获取用户名
-        String username = (String) jwtUtil.parseToken(token).get("account");
+        Map<String, Object> claims = jwtUtil.parseToken(token);
+        System.out.println(claims);
+        String username = (String) claims.get("account");
         if (username != null) {
           // 用户已登录，返回欢迎信息
-          return R.successWithData("Welcome, " + username);
+          return R.successWithData(Map.of("username", username,"userId", claims.get("id")));
         } else {
           // 用户不存在
           return R.commonFail("401", "Unauthorized");

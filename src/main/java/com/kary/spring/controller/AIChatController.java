@@ -3,6 +3,8 @@ package com.kary.spring.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.kary.spring.entity.ChatMessage;
 import com.kary.spring.service.ChatMemoryService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -54,7 +56,8 @@ public class AIChatController {
      * @return 用户的会话id列表
      */
     @GetMapping("/getConversationID")
-    public Map<String, Object> getConversationID(@RequestParam(value = "userId") Integer userId) {
+    public Map<String, Object> getConversationID(@RequestParam(value = "userId") Long userId) {
+        System.out.println("userId:" + userId);
         // 从redis中获取userId对应的conversationId
         List<String> conversationIds = chatMemoryService.getConversationIds(userId);
         return Map.of(
@@ -71,7 +74,7 @@ public class AIChatController {
     @NoArgsConstructor
     static class ChatRequest {
         @NotNull
-        Integer userId;
+        Long userId;
         @NotNull
         String conversationId;
         String content;
@@ -84,7 +87,7 @@ public class AIChatController {
      * @return 聊天历史
      */
     @GetMapping("/chat")
-    public Map<String, Object> getChatHistory(@RequestParam(value = "userId") Integer userId,
+    public Map<String, Object> getChatHistory(@RequestParam(value = "userId") Long userId,
                                               @RequestParam(value = "conversationId") String conversationId) throws JsonProcessingException {
         // 从redis中获取userId和conversationId对应的历史消息 todo:先从客户端内存中获取
         List<ChatMessage> chatMessages = chatMemoryService.getChatMessages("chatMemories2:" + userId + ":" + conversationId);

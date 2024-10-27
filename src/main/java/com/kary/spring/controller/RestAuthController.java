@@ -58,7 +58,7 @@ public class RestAuthController {
         //根据返回的参数，执行登录请求（获取用户信息）
         AuthResponse<AuthUser> authResponse = authRequest.login(callback);
         //打印用户信息
-        //System.out.println("用户的UnionID：" + authResponse.getData().getUuid());
+        System.out.println("用户的UnionID：" + authResponse.getData().getUuid());
 
         if (authResponse.ok()) {
             AuthUser authUser = authResponse.getData();
