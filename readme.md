@@ -1,3 +1,7 @@
+Apipost文档
+https://console-docs.apipost.cn/preview/f532584fc239c4b6/eed9b07d5e9d70d9 密码：919743
+
+
 #### 用户登录注册
 1. 用户登录
   - 密码登录 http://localhost:8080/users/login
@@ -11,6 +15,11 @@
   - http://localhost:8080/users/register
     - 账号密码注册
     - todo:第三方登录但是没有注册 
+
+3. 测试token
+    - http://localhost:8080/users/welcome
+    - 由于第三方登录成功后，会返回token，可以通过这个接口测试token是否有效
+    - todo: 密码登录没有写token
 
 #### AI聊天
 1. 获取某个用户的聊天记录列表
