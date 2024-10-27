@@ -8,7 +8,6 @@ import lombok.experimental.Accessors;
 @NoArgsConstructor
 @Accessors(chain = true)
 public class LoginDTO {
-
   private String account;
   private String password;
 }

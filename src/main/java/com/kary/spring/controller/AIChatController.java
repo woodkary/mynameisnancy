@@ -55,8 +55,8 @@ public class AIChatController {
      * @param userId 用户id
      * @return 用户的会话id列表
      */
-    @GetMapping("/getConversationID")
-    public Map<String, Object> getConversationID(@RequestParam(value = "userId") Long userId) {
+    @GetMapping("/getConversationIDList")
+    public Map<String, Object> getConversationIDList(@RequestParam(value = "userId") Long userId) {
         System.out.println("userId:" + userId);
         // 从redis中获取userId对应的conversationId
         List<String> conversationIds = chatMemoryService.getConversationIds(userId);

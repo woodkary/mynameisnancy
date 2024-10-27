@@ -45,10 +45,10 @@ public class RestAuthController {
     }
 
     /**
-     * 登录成功后返回到此页
+     * 登录回调
      *
-     * @param callback 登录用户的信息
-     * @return
+     * @param callback 回调参数
+     * @return 登录结果
      */
     @RequestMapping("/callback")
     public Object login(AuthCallback callback) {
@@ -58,7 +58,7 @@ public class RestAuthController {
         //根据返回的参数，执行登录请求（获取用户信息）
         AuthResponse<AuthUser> authResponse = authRequest.login(callback);
         //打印用户信息
-        System.out.println("用户的UnionID：" + authResponse.getData().getUuid());
+        //System.out.println("用户的UnionID：" + authResponse.getData().getUuid());
 
         if (authResponse.ok()) {
             AuthUser authUser = authResponse.getData();
