@@ -52,4 +52,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         .setPassword(DigestUtils.md5DigestAsHex(registerDTO.getPassword().getBytes()));
     userMapper.insert(saveUser);
   }
+
+  @Override
+  public String thirdPartyLogin(String uuid) {
+    QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+    queryWrapper.eq("uuid", uuid);
+    User user = userMapper.selectOne(queryWrapper);
+    if (Objects.isNull(user)) {
+      // 用户不存在，抛出异常或进行其他处理
+      throw new LoginException("请进行注册", 401);
+    }
+    // 用户存在，生成JWT token
+    return jwtUtil.getToken(new LoginDTO().setAccount(user.getAccount()).setPassword(user.getPassword()));
+  }
 }

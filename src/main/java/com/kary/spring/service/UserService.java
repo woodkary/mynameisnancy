@@ -10,4 +10,6 @@ public interface UserService extends IService<User> {
   String login(LoginDTO loginDTO);
 
   void register(RegisterDTO registerDTO);
+
+  String thirdPartyLogin(String uuid);
 }

@@ -1,0 +1,9 @@
+justauth:
+  enabled: true
+  type:
+    GITEE:
+      client-id: 2e5fbb45a366e4b775896fdb6ad30a28c3413bdab4a5311c2e880b6186b1c141
+      client-secret: 6c1aba227a0305f15255cb915bf119ec4a02ca28ecd78b4c7dfe167bb45a72f4
+      redirect-uri: http://localhost:8080/oauth/callback
+  cache:
+    type: default
