@@ -11,13 +11,14 @@ import me.zhyd.oauth.request.AuthGiteeRequest;
 import me.zhyd.oauth.model.AuthCallback;
 import me.zhyd.oauth.request.AuthRequest;
 import me.zhyd.oauth.utils.AuthStateUtils;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.time.Duration;
 
 
 @RestController
@@ -53,12 +54,7 @@ public class RestAuthController {
     @RequestMapping("/callback")
     public Object login(AuthCallback callback) {
         AuthRequest authRequest = getAuthRequest();
-        // 打印返回的授权信息
-        //System.out.println(callback.getCode());
-        //根据返回的参数，执行登录请求（获取用户信息）
         AuthResponse<AuthUser> authResponse = authRequest.login(callback);
-        //打印用户信息
-        //System.out.println("用户的UnionID：" + authResponse.getData().getUuid());
 
         if (authResponse.ok()) {
             AuthUser authUser = authResponse.getData();
@@ -67,8 +63,18 @@ public class RestAuthController {
             try {
                 // 尝试第三方登录
                 String token = userService.thirdPartyLogin(uuid);
-                // 返回token
-                return ResponseEntity.ok().body(token);
+                // 使用 ResponseCookie 设置 HTTP-only 的 token
+                ResponseCookie cookie = ResponseCookie.from("token", token)
+                        .httpOnly(true)
+                        .secure(true) // 使用 HTTPS 时设置为 true
+                        .path("/")
+                        .maxAge(Duration.ofHours(1)) // 设置有效期
+                        .build();
+
+                // 将 token 设置在响应的 Cookie 中
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                        .body("登录成功");
             } catch (LoginException e) {
                 // 处理登录异常
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
@@ -81,10 +87,11 @@ public class RestAuthController {
     }
 
 
+
+
     /**
      * 授权接口类
      *
-     * @return 各种请求的结果
      */
     private AuthRequest getAuthRequest() {
         return new AuthGiteeRequest(AuthConfig.builder()
