@@ -1,5 +1,6 @@
 package com.kary.spring.service.impl;
 
+import cn.hutool.http.HttpResponse;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kary.spring.constant.UserConstant;
@@ -12,6 +13,7 @@ import com.kary.spring.dto.LoginDTO;
 import com.kary.spring.entity.User;
 import com.kary.spring.service.UserService;
 import com.kary.spring.util.JwtUtil;
+import jakarta.servlet.http.HttpServletResponse;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
@@ -60,10 +62,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     QueryWrapper<User> queryWrapper = new QueryWrapper<>();
     queryWrapper.eq("uuid", uuid);
     User user = userMapper.selectOne(queryWrapper);
-    System.out.println("userId======"+user.getId());
     if (Objects.isNull(user)) {
       // 用户不存在，抛出异常或进行其他处理
-      throw new LoginException("请进行注册", 401);
+      //throw new LoginException("请进行注册", 401);
+      throw new LoginException(UserConstant.NOT_REGISTER, 401);
     }
     // 用户存在，生成JWT token
     return jwtUtil.getToken(new TokenUserClaim(user.getId(), user.getAccount()));
